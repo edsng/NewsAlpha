@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import "./AnalysisPage.css";
 
@@ -26,18 +26,18 @@ import "./AnalysisPage.css";
 /* ════════════════════ STATIC OPTION LISTS ════════════════════ */
 
 const NEWS_SOURCES = [
-  { value: "all",              label: "All Sources" },
-  { value: "guardian",         label: "The Guardian" },
-  { value: "cnn_dailymail",   label: "CNN-DailyMail" },
-  { value: "ibt",             label: "Intl Business Times" },
-  { value: "globenewswire",   label: "GlobeNewswire" },
-  { value: "times_of_india",  label: "Times of India" },
-  { value: "bbc",             label: "BBC News" },
-  { value: "npr",             label: "NPR" },
-  { value: "boing_boing",     label: "Boing Boing" },
-  { value: "business_insider", label: "Business Insider" },
-  { value: "globalsecurity",  label: "Globalsecurity.org" },
-  { value: "abc",             label: "ABC News" },
+  { value: "all",                        label: "All Sources" },
+  { value: "The Guardian",               label: "The Guardian" },
+  { value: "CNN-DailyMail/Other",        label: "CNN-DailyMail" },
+  { value: "International Business Times", label: "Intl Business Times" },
+  { value: "GlobeNewswire",              label: "GlobeNewswire" },
+  { value: "The Times of India",         label: "Times of India" },
+  { value: "BBC News",                   label: "BBC News" },
+  { value: "NPR",                        label: "NPR" },
+  { value: "Boing Boing",               label: "Boing Boing" },
+  { value: "Business Insider",           label: "Business Insider" },
+  { value: "Globalsecurity.org",         label: "Globalsecurity.org" },
+  { value: "ABC News",                   label: "ABC News" },
 ];
 
 const NEWS_SECTORS = [
@@ -57,6 +57,100 @@ const NEWS_SECTORS = [
 
 const MARKET_SECTORS = [...NEWS_SECTORS]; // same ETFs for market side
 
+/* ════════════════════ API CONFIG ════════════════════ */
+
+const API_BASE = "http://localhost:3001";
+
+/* ════════════════════ DATA TYPES ════════════════════ */
+
+interface DailyDatum {
+  date: string;
+  sentiment: number;
+  returnPct: number;
+}
+
+interface PriceDatum {
+  date: string;
+  price: number;
+  sentiment: number | null;
+  returnPct: number;
+  predicted: boolean | null;
+}
+
+interface AnalysisResult {
+  dailyData: DailyDatum[];
+  returnData: DailyDatum[];
+  priceSeries: PriceDatum[];
+  correlation: number;
+  accuracy: number;
+  tradingDays: number;
+  meanSentiment: number;
+  meanReturn: number;
+  articles: number;
+  bucketType: "weekly" | "monthly";
+}
+
+const EMPTY_RESULT: AnalysisResult = {
+  dailyData: [],
+  returnData: [],
+  priceSeries: [],
+  correlation: 0,
+  accuracy: 0,
+  tradingDays: 0,
+  meanSentiment: 0,
+  meanReturn: 0,
+  articles: 0,
+  bucketType: "monthly",
+};
+
+/* ════════════════════ DATA FETCH HOOK ════════════════════ */
+
+function useAnalysisData(source: string, newsSector: string, mktSector: string) {
+  const [data, setData] = useState<AnalysisResult>(EMPTY_RESULT);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    const params = new URLSearchParams({ source, newsSector, mktSector });
+
+    fetch(`${API_BASE}/api/analysis?${params}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Server responded ${res.status}`);
+        return res.json();
+      })
+      .then((json) => {
+        if (cancelled) return;
+        setData({
+          dailyData: json.dailyData ?? [],
+          returnData: json.returnData ?? [],
+          priceSeries: json.priceSeries ?? [],
+          correlation: json.correlation ?? 0,
+          accuracy: json.accuracy ?? 0,
+          tradingDays: json.tradingDays ?? 0,
+          meanSentiment: json.meanSentiment ?? 0,
+          meanReturn: json.meanReturn ?? 0,
+          articles: json.articles ?? 0,
+          bucketType: json.bucketType ?? "monthly",
+        });
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("Failed to fetch analysis data:", err);
+        setError(err.message);
+        setLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [source, newsSector, mktSector]);
+
+  return { data, loading, error };
+}
+
 /* ════════════════════ SECTOR COLOURS ════════════════════ */
 
 const SECTOR_COLORS: Record<string, string> = {
@@ -73,102 +167,6 @@ const SECTOR_COLORS: Record<string, string> = {
   XLRE: "#a855f7",
   XHB:  "#ec4899",
 };
-
-/* ════════════════════ MOCK DATA GENERATOR ════════════════════ */
-
-/*  Deterministic pseudo-random from a string seed so that the
-    same dropdown combination always produces the same chart.    */
-function seededRandom(seed: string) {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) {
-    h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
-  }
-  return () => {
-    h ^= h << 13; h ^= h >> 17; h ^= h << 5;
-    return ((h >>> 0) / 4294967296);
-  };
-}
-
-interface DailyDatum {
-  date: string;
-  sentiment: number;
-  returnPct: number;
-}
-
-interface PriceDatum {
-  date: string;
-  price: number;
-  sentiment: number | null;   // null = no sentiment data for this day
-  returnPct: number;          // daily return %
-  predicted: boolean | null;  // true = sentiment correctly predicted direction, null = no sentiment
-}
-
-interface AnalysisResult {
-  dailyData: DailyDatum[];
-  priceSeries: PriceDatum[];
-  correlation: number;
-  accuracy: number;
-  tradingDays: number;
-  meanSentiment: number;
-  meanReturn: number;
-  articles: number;
-}
-
-function generateMockData(source: string, newsSector: string, mktSector: string): AnalysisResult {
-  const seed = `${source}-${newsSector}-${mktSector}`;
-  const rand = seededRandom(seed);
-
-  const months = [
-    "Jan '19","Apr '19","Jul '19","Oct '19",
-    "Jan '20","Apr '20","Jul '20","Oct '20",
-    "Jan '21","Apr '21","Jul '21","Oct '21",
-    "Jan '22","Apr '22","Jul '22","Oct '22",
-    "Jan '23","Apr '23","Jul '23","Oct '23",
-    "Jan '24","Apr '24","Jul '24","Oct '24",
-  ];
-
-  const dailyData: DailyDatum[] = months.map((m) => ({
-    date: m,
-    sentiment: (rand() * 2 - 1) * 0.6 + 0.1,
-    returnPct: (rand() * 2 - 1) * 2.5,
-  }));
-
-  /* price series — more granular, monthly from 2012–2024.
-     Some months have matching sentiment data, others don't. */
-  const priceMonths: string[] = [];
-  for (let y = 2012; y <= 2024; y++) {
-    for (const m of ["Jan", "Mar", "May", "Jul", "Sep", "Nov"]) {
-      priceMonths.push(`${m} '${String(y).slice(2)}`);
-    }
-  }
-
-  let price = 30 + rand() * 40; // starting price
-  const priceSeries: PriceDatum[] = priceMonths.map((date) => {
-    const returnPct = (rand() - 0.47) * 8;
-    price = price * (1 + returnPct / 100);
-    price = Math.max(price, 5);
-
-    // ~40% of price points have sentiment coverage
-    const hasSentiment = rand() > 0.6;
-    const sentiment = hasSentiment ? (rand() * 2 - 1) * 0.7 : null;
-
-    // prediction correct if sentiment sign matches return sign
-    const predicted = sentiment !== null
-      ? (sentiment >= 0 && returnPct >= 0) || (sentiment < 0 && returnPct < 0)
-      : null;
-
-    return { date, price: +price.toFixed(2), sentiment, returnPct: +returnPct.toFixed(2), predicted };
-  });
-
-  const correlation = +(rand() * 0.24 - 0.04).toFixed(4);
-  const accuracy = +(48 + rand() * 10).toFixed(1);
-  const tradingDays = Math.round(200 + rand() * 1400);
-  const meanSentiment = +(rand() * 1.2 - 0.4).toFixed(3);
-  const meanReturn = +((rand() - 0.45) * 0.12).toFixed(4);
-  const articles = Math.round(800 + rand() * 60000);
-
-  return { dailyData, priceSeries, correlation, accuracy, tradingDays, meanSentiment, meanReturn, articles };
-}
 
 /* ════════════════════ TINY COMPONENTS ════════════════════ */
 
@@ -212,12 +210,17 @@ function PriceChart({
     x: number; y: number; datum: PriceDatum;
   } | null>(null);
 
-  const prices = data.map((d) => d.price);
+  // Helper: is this a gap or spacer point?
+  const isGapPoint = (d: PriceDatum) => d.date === "___GAP___" || d.date === "___SPACER___";
+
+  // Filter out gap/spacer markers for calculations
+  const realData = data.filter((d) => !isGapPoint(d));
+  const prices = realData.map((d) => d.price);
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
   const priceRange = maxPrice - minPrice || 1;
 
-  const sentPoints = data.filter((d) => d.sentiment !== null);
+  const sentPoints = realData.filter((d) => d.sentiment !== null);
   const maxReturn = Math.max(...sentPoints.map((d) => Math.abs(d.returnPct)), 0.01);
 
   /* ── price chart geometry ── */
@@ -234,19 +237,26 @@ function PriceChart({
   const sentPadBottom = 4;
   const sentPlotH = sentH - sentPadTop - sentPadBottom;
 
-  /* build SVG polyline for price */
+  /* build SVG polyline segments (break at gaps/spacers) */
   const pointCoords = data.map((d, i) => {
+    if (isGapPoint(d)) return null;
     const x = (i / (data.length - 1)) * 100;
     const y = padTop + (1 - (d.price - minPrice) / priceRange) * plotH;
     return { x, y };
   });
-  const polyline = pointCoords.map((p) => `${p.x},${p.y}`).join(" ");
-  const areaPoints = [
-    `0,${padTop + plotH}`,
-    ...pointCoords.map((p) => `${p.x},${p.y}`),
-    `100,${padTop + plotH}`,
-  ].join(" ");
 
+  // Split into segments at gap markers
+  const lineSegments: { x: number; y: number }[][] = [];
+  let currentSeg: { x: number; y: number }[] = [];
+  for (const pt of pointCoords) {
+    if (pt === null) {
+      if (currentSeg.length > 0) lineSegments.push(currentSeg);
+      currentSeg = [];
+    } else {
+      currentSeg.push(pt);
+    }
+  }
+  if (currentSeg.length > 0) lineSegments.push(currentSeg);
   /* y-axis labels */
   const yTicks = Array.from({ length: 5 }, (_, i) => {
     const val = minPrice + (priceRange * (4 - i)) / 4;
@@ -283,7 +293,7 @@ function PriceChart({
           ))}
         </div>
 
-        {/* prediction bars — colour = correct/incorrect, height = return magnitude */}
+        {/* prediction bars — skip gap markers */}
         <div
           style={{
             position: "absolute",
@@ -295,7 +305,7 @@ function PriceChart({
           }}
         >
           {data.map((d, i) => {
-            if (d.sentiment === null) return null;
+            if (isGapPoint(d) || d.sentiment === null) return null;
             const barH = (Math.abs(d.returnPct) / maxReturn) * plotH * 0.85;
             const correct = d.predicted === true;
             return (
@@ -325,7 +335,37 @@ function PriceChart({
           })}
         </div>
 
-        {/* SVG line + area */}
+        {/* Gap separator lines — inside the plot area */}
+        <div
+          style={{
+            position: "absolute",
+            left: padLeft,
+            right: padRight,
+            top: 0,
+            bottom: 0,
+            pointerEvents: "none",
+            zIndex: 5,
+          }}
+        >
+          {data.map((d, i) =>
+            d.date === "___GAP___" ? (
+              <div
+                key={`gap-${i}`}
+                style={{
+                  position: "absolute",
+                  left: `${(i / (data.length - 1)) * 100}%`,
+                  top: padTop,
+                  bottom: padBottom,
+                  width: 0,
+                  borderLeft: "2px dashed var(--text-muted)",
+                  opacity: 0.5,
+                }}
+              />
+            ) : null
+          )}
+        </div>
+
+        {/* SVG line segments + area fills */}
         <svg
           viewBox={`0 0 100 ${priceH}`}
           preserveAspectRatio="none"
@@ -346,18 +386,30 @@ function PriceChart({
               <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.01" />
             </linearGradient>
           </defs>
-          <polygon points={areaPoints} fill="url(#priceAreaGrad)" />
-          <polyline
-            points={polyline}
-            fill="none"
-            stroke="var(--accent)"
-            strokeWidth="0.5"
-            vectorEffect="non-scaling-stroke"
-            style={{ filter: "drop-shadow(0 0 3px rgba(59,130,246,0.4))" }}
-          />
+          {lineSegments.map((seg, si) => {
+            const segPolyline = seg.map((p) => `${p.x},${p.y}`).join(" ");
+            const segArea = [
+              `${seg[0].x},${padTop + plotH}`,
+              ...seg.map((p) => `${p.x},${p.y}`),
+              `${seg[seg.length - 1].x},${padTop + plotH}`,
+            ].join(" ");
+            return (
+              <g key={si}>
+                <polygon points={segArea} fill="url(#priceAreaGrad)" />
+                <polyline
+                  points={segPolyline}
+                  fill="none"
+                  stroke="var(--accent)"
+                  strokeWidth="0.5"
+                  vectorEffect="non-scaling-stroke"
+                  style={{ filter: "drop-shadow(0 0 3px rgba(59,130,246,0.4))" }}
+                />
+              </g>
+            );
+          })}
         </svg>
 
-        {/* invisible hover zones */}
+        {/* invisible hover zones — skip gaps */}
         <div
           style={{
             position: "absolute",
@@ -368,17 +420,21 @@ function PriceChart({
             display: "flex",
           }}
         >
-          {data.map((d, i) => (
-            <div
-              key={i}
-              style={{ flex: 1, cursor: "crosshair" }}
-              onMouseEnter={(e) => {
-                const rect = e.currentTarget.parentElement!.parentElement!.getBoundingClientRect();
-                setTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top - 90, datum: d });
-              }}
-              onMouseLeave={() => setTooltip(null)}
-            />
-          ))}
+          {data.map((d, i) =>
+            isGapPoint(d) ? (
+              <div key={i} style={{ flex: 1 }} />
+            ) : (
+              <div
+                key={i}
+                style={{ flex: 1, cursor: "crosshair" }}
+                onMouseEnter={(e) => {
+                  const rect = e.currentTarget.parentElement!.parentElement!.getBoundingClientRect();
+                  setTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top - 90, datum: d });
+                }}
+                onMouseLeave={() => setTooltip(null)}
+              />
+            )
+          )}
         </div>
 
         {/* tooltip */}
@@ -438,9 +494,9 @@ function PriceChart({
         <div className="ap-sent-sub__plot" style={{ left: padLeft, right: padRight }}>
           {/* zero line */}
           <div className="ap-sent-sub__zero" style={{ top: sentPadTop + sentPlotH / 2 }} />
-          {/* sentiment bars */}
+          {/* sentiment bars — skip gaps and spacers */}
           {data.map((d, i) => {
-            if (d.sentiment === null) return null;
+            if (isGapPoint(d) || d.sentiment === null) return null;
             const sent = d.sentiment;
             const barH = (Math.abs(sent) / 1) * (sentPlotH / 2);
             const isPos = sent >= 0;
@@ -464,13 +520,17 @@ function PriceChart({
         </div>
       </div>
 
-      {/* x-axis */}
+      {/* x-axis — show gap symbol at gaps, skip spacers */}
       <div className="ap-chart-x-axis" style={{ paddingLeft: padLeft }}>
-        {data.map((d, i) =>
-          i % step === 0 ? (
+        {data.map((d, i) => {
+          if (d.date === "___SPACER___") return null;
+          if (d.date === "___GAP___") {
+            return <span key={i} className="ap-chart-x-label" style={{ opacity: 0.4 }}>⋯</span>;
+          }
+          return i % step === 0 ? (
             <span key={i} className="ap-chart-x-label">{d.date}</span>
-          ) : null
-        )}
+          ) : null;
+        })}
       </div>
     </div>
   );
@@ -496,7 +556,9 @@ function SingleBarChart({
     x: number; y: number; datum: DailyDatum;
   } | null>(null);
 
-  const values = data.map((d) => d[dataKey]);
+  // Filter out gap markers for calculations
+  const realData = data.filter((d) => d.date !== "___GAP___");
+  const values = realData.map((d) => d[dataKey]);
   const maxAbs = Math.max(...values.map(Math.abs), 0.01);
 
   const yLabels = [
@@ -526,9 +588,31 @@ function SingleBarChart({
           ))}
         </div>
 
-        {/* bars */}
+        {/* bars + gap separators */}
         <div className="ap-chart-bars" style={{ left: 44 }}>
           {data.map((d, i) => {
+            const barW = Math.max((1 / data.length) * 100 - 0.3, 0.3);
+            const barLeft = (i / data.length) * 100 + 0.15;
+
+            // Gap marker — render a dashed separator line
+            if (d.date === "___GAP___") {
+              return (
+                <div
+                  key={i}
+                  style={{
+                    position: "absolute",
+                    left: `${barLeft + barW / 2}%`,
+                    top: "10%",
+                    bottom: "10%",
+                    width: 0,
+                    borderLeft: "2px dashed var(--text-muted)",
+                    opacity: 0.5,
+                    pointerEvents: "none",
+                  }}
+                />
+              );
+            }
+
             const val = d[dataKey];
             const h = (Math.abs(val) / maxAbs) * 45;
             const bottom = val >= 0 ? 50 : 50 - h;
@@ -539,12 +623,12 @@ function SingleBarChart({
                 className="ap-chart-bar"
                 style={{
                   position: "absolute",
-                  left: `${(i / data.length) * 100 + 0.4}%`,
-                  width: `${(1 / data.length) * 100 - 1}%`,
+                  left: `${barLeft}%`,
+                  width: `${barW}%`,
                   bottom: `${bottom}%`,
                   height: `${h}%`,
                   background: color,
-                  borderRadius: "3px 3px 0 0",
+                  borderRadius: data.length > 80 ? "1px 1px 0 0" : "3px 3px 0 0",
                 }}
                 onMouseEnter={(e) => {
                   const rect = e.currentTarget.parentElement!.getBoundingClientRect();
@@ -592,11 +676,14 @@ function SingleBarChart({
 
       {/* x-axis */}
       <div className="ap-chart-x-axis" style={{ paddingLeft: 44 }}>
-        {data.map((d, i) =>
-          i % step === 0 ? (
+        {data.map((d, i) => {
+          if (d.date === "___GAP___") {
+            return <span key={i} className="ap-chart-x-label" style={{ opacity: 0.4 }}>⋯</span>;
+          }
+          return i % step === 0 ? (
             <span key={i} className="ap-chart-x-label">{d.date}</span>
-          ) : null
-        )}
+          ) : null;
+        })}
       </div>
     </div>
   );
@@ -610,10 +697,7 @@ export default function AnalysisPage() {
   const [newsSector, setNewsSector] = useState("XLK");
   const [mktSector, setMktSector] = useState("XLK");
 
-  const data = useMemo(
-    () => generateMockData(source, newsSector, mktSector),
-    [source, newsSector, mktSector]
-  );
+  const { data, loading, error } = useAnalysisData(source, newsSector, mktSector);
 
   const sentColor = SECTOR_COLORS[newsSector] || "var(--accent)";
   const retColor = SECTOR_COLORS[mktSector] || "var(--cyan)";
@@ -622,9 +706,12 @@ export default function AnalysisPage() {
   const mktLabel = MARKET_SECTORS.find((s) => s.value === mktSector)?.label ?? mktSector;
   const sourceLabel = NEWS_SOURCES.find((s) => s.value === source)?.label ?? source;
 
+  /* accuracy from DB is 0–1, convert to percentage */
+  const accPct = data.accuracy <= 1 ? data.accuracy * 100 : data.accuracy;
+
   /* accuracy colour helper */
   const accClass =
-    data.accuracy >= 53 ? "ap-color-green" : data.accuracy >= 50 ? "ap-color-text" : "ap-color-red";
+    accPct >= 53 ? "ap-color-green" : accPct >= 50 ? "ap-color-text" : "ap-color-red";
   const corrClass =
     data.correlation > 0.05 ? "ap-color-green" : data.correlation < -0.05 ? "ap-color-red" : "ap-color-text";
 
@@ -736,7 +823,7 @@ export default function AnalysisPage() {
                   {newsLabel} News Sentiment
                 </h2>
                 <p className="ap-chart-panel__desc">
-                  Source: {sourceLabel} · Average daily VADER compound score
+                  Source: {sourceLabel} · {data.bucketType === "weekly" ? "Weekly" : "Monthly"} avg VADER score · {data.dailyData.filter(d => d.date !== "___GAP___").length} {data.bucketType === "weekly" ? "weeks" : "months"}
                 </p>
               </div>
               <div className="ap-chart-panel__legend">
@@ -763,7 +850,7 @@ export default function AnalysisPage() {
                   {mktLabel} ETF Return
                 </h2>
                 <p className="ap-chart-panel__desc">
-                  {mktSector} daily return percentage · {data.tradingDays.toLocaleString()} trading days
+                  {mktSector} {data.bucketType === "weekly" ? "weekly" : "monthly"} avg return · {data.returnData.filter(d => d.date !== "___GAP___").length} {data.bucketType === "weekly" ? "weeks" : "months"}
                 </p>
               </div>
               <div className="ap-chart-panel__legend">
@@ -774,7 +861,7 @@ export default function AnalysisPage() {
               </div>
             </div>
             <SingleBarChart
-              data={data.dailyData}
+              data={data.returnData}
               dataKey="returnPct"
               color={retColor}
               unit="Return"
@@ -787,8 +874,8 @@ export default function AnalysisPage() {
         <div className="ap-sidebar">
           <StatCard
             label="Prediction Accuracy"
-            value={`${data.accuracy}%`}
-            detail={`${data.accuracy >= 50 ? "Above" : "Below"} 50% random baseline`}
+            value={`${accPct.toFixed(1)}%`}
+            detail={`${accPct >= 50 ? "Above" : "Below"} 50% random baseline`}
             colorClass={accClass}
             delay="ap-fade-in--d4"
           />
@@ -831,12 +918,25 @@ export default function AnalysisPage() {
             </div>
           </div>
 
-          {/* backend notice */}
+          {/* status notice */}
           <div className="ap-notice ap-fade-in ap-fade-in--d7">
-            <span className="ap-notice__icon">🔌</span>
+            <span className="ap-notice__icon">{error ? "⚠️" : loading ? "⏳" : "✓"}</span>
             <span className="ap-notice__text">
-              <strong>Mock data.</strong> This dashboard is using generated placeholder data.
-              Connect the cluster database to populate with real analysis results.
+              {error ? (
+                <>
+                  <strong>Connection error.</strong> Could not reach the API server.
+                  Make sure the backend is running on port 3001.
+                </>
+              ) : loading ? (
+                <>
+                  <strong>Loading...</strong> Fetching data from the database.
+                </>
+              ) : (
+                <>
+                  <strong>Live data.</strong> Showing results from {data.tradingDays.toLocaleString()} matched
+                  trading days across {data.articles.toLocaleString()} articles.
+                </>
+              )}
             </span>
           </div>
         </div>
