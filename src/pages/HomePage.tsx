@@ -168,6 +168,7 @@ export default function HomePage() {
           <Link to="/" className="hp-nav-link hp-nav-link--active">Home</Link>
           <Link to="/analysis" className="hp-nav-link">Analysis</Link>
           <Link to="/paper" className="hp-nav-link">Paper</Link>
+          <Link to="/ai-analyst" className="hp-nav-link">AI Analyst</Link>
           <Link to="/about" className="hp-nav-link">About</Link>
         </div>
       </nav>

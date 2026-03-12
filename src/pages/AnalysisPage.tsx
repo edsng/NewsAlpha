@@ -210,8 +210,8 @@ function PriceChart({
     x: number; y: number; datum: PriceDatum;
   } | null>(null);
 
-  // Helper: is this a gap or spacer point?
-  const isGapPoint = (d: PriceDatum) => d.date === "___GAP___" || d.date === "___SPACER___";
+  // Helper: is this a gap marker?
+  const isGapPoint = (d: PriceDatum) => d.date === "___GAP___";
 
   // Filter out gap/spacer markers for calculations
   const realData = data.filter((d) => !isGapPoint(d));
@@ -520,10 +520,9 @@ function PriceChart({
         </div>
       </div>
 
-      {/* x-axis — show gap symbol at gaps, skip spacers */}
+      {/* x-axis — show gap symbol at gaps */}
       <div className="ap-chart-x-axis" style={{ paddingLeft: padLeft }}>
         {data.map((d, i) => {
-          if (d.date === "___SPACER___") return null;
           if (d.date === "___GAP___") {
             return <span key={i} className="ap-chart-x-label" style={{ opacity: 0.4 }}>⋯</span>;
           }
@@ -573,7 +572,7 @@ function SingleBarChart({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-      <div ref={chartRef} className="ap-chart-body" style={{ minHeight: 180 }}>
+      <div ref={chartRef} className="ap-chart-body" style={{ minHeight: 200, paddingTop: 8 }}>
         {/* grid lines */}
         <div className="ap-chart-grid">
           {yLabels.map((_, i) => (
@@ -697,7 +696,20 @@ export default function AnalysisPage() {
   const [newsSector, setNewsSector] = useState("XLK");
   const [mktSector, setMktSector] = useState("XLK");
 
+  // Source-sector coverage map: { source_name: [sector1, sector2, ...] }
+  const [coverage, setCoverage] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/source-coverage`)
+      .then((res) => res.json())
+      .then((data) => setCoverage(data))
+      .catch(() => {});
+  }, []);
+
   const { data, loading, error } = useAnalysisData(source, newsSector, mktSector);
+
+  // Determine which sectors are available for the selected source
+  const availableSectors = source === "all" ? null : coverage[source] ?? [];
 
   const sentColor = SECTOR_COLORS[newsSector] || "var(--accent)";
   const retColor = SECTOR_COLORS[mktSector] || "var(--cyan)";
@@ -724,6 +736,7 @@ export default function AnalysisPage() {
           <Link to="/" className="ap-nav-link">Home</Link>
           <Link to="/analysis" className="ap-nav-link ap-nav-link--active">Analysis</Link>
           <Link to="/paper" className="ap-nav-link">Paper</Link>
+          <Link to="/ai-analyst" className="ap-nav-link">AI Analyst</Link>
           <Link to="/about" className="ap-nav-link">About</Link>
         </div>
       </nav>
@@ -760,9 +773,19 @@ export default function AnalysisPage() {
             value={newsSector}
             onChange={(e) => setNewsSector(e.target.value)}
           >
-            {NEWS_SECTORS.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
+            {NEWS_SECTORS.map((s) => {
+              const disabled = availableSectors !== null && !availableSectors.includes(s.value);
+              return (
+                <option
+                  key={s.value}
+                  value={s.value}
+                  disabled={disabled}
+                  style={{ opacity: disabled ? 0.4 : 1 }}
+                >
+                  {s.label}{disabled ? " (no data)" : ""}
+                </option>
+              );
+            })}
           </select>
         </div>
 
