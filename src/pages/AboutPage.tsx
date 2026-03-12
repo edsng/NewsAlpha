@@ -132,6 +132,7 @@ export default function AboutPage() {
           <Link to="/" className="ab-nav-link">Home</Link>
           <Link to="/analysis" className="ab-nav-link">Analysis</Link>
           <Link to="/paper" className="ab-nav-link">Paper</Link>
+          <Link to="/ai-analyst" className="ab-nav-link">AI Analyst</Link>
           <Link to="/about" className="ab-nav-link ab-nav-link--active">About</Link>
         </div>
       </nav>

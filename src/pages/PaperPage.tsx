@@ -100,6 +100,7 @@ export default function PaperPage() {
           <Link to="/" className="pp-nav-link">Home</Link>
           <Link to="/analysis" className="pp-nav-link">Analysis</Link>
           <Link to="/paper" className="pp-nav-link pp-nav-link--active">Paper</Link>
+          <Link to="/ai-analyst" className="pp-nav-link">AI Analyst</Link>
           <Link to="/about" className="pp-nav-link">About</Link>
         </div>
       </nav>

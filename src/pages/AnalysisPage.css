@@ -147,6 +147,11 @@
   color: var(--text);
 }
 
+.ap-select option:disabled {
+  color: var(--text-muted);
+  opacity: 0.4;
+}
+
 /* divider arrow between news sector and market sector */
 .ap-controls__arrow {
   display: flex;
@@ -241,7 +246,7 @@
   flex: 1;
   position: relative;
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* mock chart grid lines */

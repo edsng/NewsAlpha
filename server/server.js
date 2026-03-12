@@ -19,6 +19,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
+app.use(express.json());
 
 /* ════════════════════ DATABASE POOL ════════════════════ */
 
@@ -60,6 +61,29 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
+app.get("/api/source-coverage", async (req, res) => {
+  try {
+    // Return which source+sector combos have articles (within valid date range)
+    const [rows] = await pool.execute(
+      `SELECT source_name, mapped_sector, COUNT(*) as cnt
+       FROM articles
+       WHERE CAST(SUBSTRING(date, 7, 4) AS UNSIGNED) BETWEEN 2010 AND 2025
+       GROUP BY source_name, mapped_sector`
+    );
+
+    // Build a map: { source_name: [sector1, sector2, ...] }
+    const coverage = {};
+    for (const r of rows) {
+      if (!coverage[r.source_name]) coverage[r.source_name] = [];
+      coverage[r.source_name].push(r.mapped_sector);
+    }
+
+    res.json(coverage);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get("/api/analysis", async (req, res) => {
   try {
     const { source = "all", newsSector = "XLK", mktSector = "XLK" } = req.query;
@@ -87,11 +111,15 @@ app.get("/api/analysis", async (req, res) => {
       }
     } else {
       // Aggregate sentiment per date for this source + sector combo
+      // Filter to 2010-2025 range to exclude garbage dates (date format: MM-DD-YYYY)
       const [rows] = await pool.execute(
         `SELECT date, AVG(sentiment_score) as avg_sentiment, COUNT(*) as article_count
          FROM articles
          WHERE source_name = ? AND mapped_sector = ?
-         GROUP BY date ORDER BY date`,
+           AND CAST(SUBSTRING(date, 7, 4) AS UNSIGNED) BETWEEN 2010 AND 2025
+         GROUP BY date ORDER BY CAST(SUBSTRING(date, 7, 4) AS UNSIGNED), 
+                                CAST(SUBSTRING(date, 1, 2) AS UNSIGNED),
+                                CAST(SUBSTRING(date, 4, 2) AS UNSIGNED)`,
         [source, newsSector]
       );
       for (const r of rows) {
@@ -147,13 +175,15 @@ app.get("/api/analysis", async (req, res) => {
       returnPct: mktByDate[d].daily_return_pct,
     }));
 
-    /* ── 5. priceSeries: ETF prices scoped to sentiment segments with gap splitting ── */
+    /* ── 5. priceSeries: ETF prices with gap-aware trimming ── */
     const sortedMkt = mktRows.sort((a, b) => parseDate(a.date) - parseDate(b.date));
     const sentDatesSorted = Object.keys(sentByDate).sort((a, b) => parseDate(a) - parseDate(b));
 
-    // Detect clusters of sentiment dates separated by large gaps (>6 months)
-    const PRICE_GAP_THRESHOLD = 180 * 86400000;
-    const sentClusters = []; // array of { start: timestamp, end: timestamp }
+    const THREE_MONTHS = 90 * 86400000;
+    const GAP_THRESHOLD_PRICE = 365 * 86400000; // 12 months
+
+    // Detect clusters of sentiment dates separated by >12 month gaps
+    const sentClusters = [];
     let clusterStart = null;
     let clusterEnd = null;
 
@@ -162,7 +192,7 @@ app.get("/api/analysis", async (req, res) => {
       if (clusterStart === null) {
         clusterStart = t;
         clusterEnd = t;
-      } else if (t - clusterEnd > PRICE_GAP_THRESHOLD) {
+      } else if (t - clusterEnd > GAP_THRESHOLD_PRICE) {
         sentClusters.push({ start: clusterStart, end: clusterEnd });
         clusterStart = t;
         clusterEnd = t;
@@ -172,49 +202,76 @@ app.get("/api/analysis", async (req, res) => {
     }
     if (clusterStart !== null) sentClusters.push({ start: clusterStart, end: clusterEnd });
 
-    // Build price series: include price data for each cluster with padding, insert gap spacers between
+    // For each cluster, determine the price window:
+    // - First cluster: full start to end + 3 months after last sentiment date
+    // - Last cluster: 3 months before first sentiment date to full end
+    // - Middle clusters: 3 months before to 3 months after
+    // - If only 1 cluster: show full range with small padding
+    function makePricePoint(p) {
+      const sent = sentByDate[p.date];
+      const sentiment = sent ? sent.avg_sentiment : null;
+      const predicted =
+        sentiment !== null
+          ? (sentiment >= 0 && p.daily_return_pct >= 0) || (sentiment < 0 && p.daily_return_pct < 0)
+          : null;
+      return {
+        date: formatDateShort(p.date),
+        price: p.close_price,
+        sentiment,
+        returnPct: p.daily_return_pct,
+        predicted,
+      };
+    }
+
     const priceSeries = [];
-    const GAP_SPACER_COUNT = 15; // number of empty slots to create visual gap space
 
-    for (let c = 0; c < sentClusters.length; c++) {
-      const cluster = sentClusters[c];
+    if (sentClusters.length <= 1 && sentClusters.length > 0) {
+      // Single cluster — show full range with padding
+      const cluster = sentClusters[0];
       const span = cluster.end - cluster.start;
-      const pad = Math.max(span * 0.08, 30 * 86400000);
+      const pad = Math.max(span * 0.05, 30 * 86400000);
+      const filtered = sortedMkt.filter((r) => {
+        const t = parseDate(r.date);
+        return t >= cluster.start - pad && t <= cluster.end + pad;
+      });
+      for (const p of filtered) priceSeries.push(makePricePoint(p));
+    } else {
+      // Multiple clusters — trim each to 3 months context, insert gap markers
+      for (let c = 0; c < sentClusters.length; c++) {
+        const cluster = sentClusters[c];
 
-      // Insert gap spacers between clusters
-      if (c > 0) {
-        for (let g = 0; g < GAP_SPACER_COUNT; g++) {
+        // Determine window for this cluster
+        let windowStart, windowEnd;
+        if (c === 0) {
+          // First cluster: show from data start, trim 3 months after end
+          windowStart = cluster.start - Math.max((cluster.end - cluster.start) * 0.05, 30 * 86400000);
+          windowEnd = cluster.end + THREE_MONTHS;
+        } else if (c === sentClusters.length - 1) {
+          // Last cluster: trim 3 months before start, show to data end
+          windowStart = cluster.start - THREE_MONTHS;
+          windowEnd = cluster.end + Math.max((cluster.end - cluster.start) * 0.05, 30 * 86400000);
+        } else {
+          // Middle cluster: 3 months on each side
+          windowStart = cluster.start - THREE_MONTHS;
+          windowEnd = cluster.end + THREE_MONTHS;
+        }
+
+        // Insert gap marker between clusters
+        if (c > 0) {
           priceSeries.push({
-            date: g === Math.floor(GAP_SPACER_COUNT / 2) ? "___GAP___" : "___SPACER___",
+            date: "___GAP___",
             price: 0,
             sentiment: null,
             returnPct: 0,
             predicted: null,
           });
         }
-      }
 
-      // Filter price data to this cluster's range + padding
-      const clusterPrices = sortedMkt.filter((r) => {
-        const t = parseDate(r.date);
-        return t >= cluster.start - pad && t <= cluster.end + pad;
-      });
-
-      for (const p of clusterPrices) {
-        const sent = sentByDate[p.date];
-        const sentiment = sent ? sent.avg_sentiment : null;
-        const predicted =
-          sentiment !== null
-            ? (sentiment >= 0 && p.daily_return_pct >= 0) || (sentiment < 0 && p.daily_return_pct < 0)
-            : null;
-
-        priceSeries.push({
-          date: formatDateShort(p.date),
-          price: p.close_price,
-          sentiment,
-          returnPct: p.daily_return_pct,
-          predicted,
+        const filtered = sortedMkt.filter((r) => {
+          const t = parseDate(r.date);
+          return t >= windowStart && t <= windowEnd;
         });
+        for (const p of filtered) priceSeries.push(makePricePoint(p));
       }
     }
 
@@ -267,23 +324,25 @@ app.get("/api/analysis", async (req, res) => {
         }
       }
     } else {
-      // Source-specific: check precomputed source_accuracy table
+      // Source-specific: check precomputed source_accuracy table for overall accuracy
       const [srcRows] = await pool.execute(
         "SELECT accuracy, num_days, mean_sentiment FROM source_accuracy WHERE source_name = ?",
         [source]
       );
       if (srcRows[0]) {
         accuracy = srcRows[0].accuracy;
-        meanSentiment = srcRows[0].mean_sentiment;
       }
 
-      // Compute correlation and mean return from matched data
+      // Compute correlation, mean sentiment, and mean return from actual matched data
       if (matchedDates.length > 1) {
         const sents = matchedDates.map((d) => sentByDate[d].avg_sentiment);
         const rets = matchedDates.map((d) => mktByDate[d].daily_return_pct);
         correlation = pearson(sents, rets);
+        meanSentiment = sents.reduce((a, b) => a + b, 0) / sents.length;
         meanReturn = rets.reduce((a, b) => a + b, 0) / rets.length;
-        if (!meanSentiment) meanSentiment = sents.reduce((a, b) => a + b, 0) / sents.length;
+      } else if (matchedDates.length === 1) {
+        meanSentiment = sentByDate[matchedDates[0]].avg_sentiment;
+        meanReturn = mktByDate[matchedDates[0]].daily_return_pct;
       }
     }
 
@@ -381,7 +440,7 @@ app.get("/api/analysis", async (req, res) => {
     const sharedKeys = Object.keys(sentBuckets).sort(sortBucketKey);
 
     // Detect gaps: if two consecutive buckets are > 3 months apart, insert a gap marker
-    const GAP_THRESHOLD = useWeekly ? 3 * 30 * 86400000 : 180 * 86400000;
+    const GAP_THRESHOLD = useWeekly ? 3 * 30 * 86400000 : 365 * 86400000;
     const segments = []; // array of arrays of keys
     let currentSegment = [];
 
@@ -465,6 +524,199 @@ function pearson(x, y) {
   return denom === 0 ? 0 : num / denom;
 }
 
+/* ════════════════════ AI ANALYST (LangChain + Gemini) ════════════════════ */
+
+/*  These endpoints power the AI Analyst page.
+ *  They use Google Gemini via LangChain to convert natural language
+ *  questions into SQL queries against the MySQL database.
+ *
+ *  Requires: GOOGLE_API_KEY environment variable
+ *  Install:  npm install @langchain/google-genai @langchain/core langchain dotenv
+ */
+
+let llm = null;
+
+async function initLLM() {
+  try {
+    // Dynamic import for ESM LangChain modules
+    const { ChatGoogleGenerativeAI } = await import("@langchain/google-genai");
+
+    if (!process.env.GOOGLE_API_KEY) {
+      console.log("  ⚠ GOOGLE_API_KEY not set — AI Analyst disabled");
+      return;
+    }
+
+    llm = new ChatGoogleGenerativeAI({
+      model: "gemini-2.5-flash",
+      apiKey: process.env.GOOGLE_API_KEY,
+      temperature: 0,
+    });
+    console.log("  ✓ AI Analyst ready (Gemini)");
+  } catch (err) {
+    console.log(`  ⚠ AI Analyst unavailable: ${err.message}`);
+  }
+}
+
+const MYSQL_SCHEMA = `
+Tables in the 'newsalpha' MySQL database:
+
+1. articles (id INT PRIMARY KEY AUTO_INCREMENT, date VARCHAR(20), category VARCHAR(100), sentiment_score DOUBLE, sentiment_label VARCHAR(20), source_name VARCHAR(100), mapped_sector VARCHAR(10))
+   - 233,609 rows of news articles with VADER sentiment scores
+   - date format: "MM-DD-YYYY"
+   - mapped_sector values: ITA, XLF, XLC, PEJ, XLY, XLI, XLK, XLE, XLV, XLP, XLRE, XHB
+   - source_name values include: The Guardian, CNN-DailyMail/Other, BBC News, GlobeNewswire, International Business Times, etc.
+
+2. etf_prices (id INT PRIMARY KEY AUTO_INCREMENT, date VARCHAR(20), ticker VARCHAR(10), open_price DOUBLE, close_price DOUBLE, volume BIGINT, daily_return_pct DOUBLE, market_direction VARCHAR(10))
+   - 36,656 rows of daily ETF price data
+   - date format: "MM-DD-YYYY"
+   - ticker values match mapped_sector: ITA, XLF, XLC, PEJ, XLY, XLI, XLK, XLE, XLV, XLP, XLRE, XHB
+   - market_direction: "green" (up) or "red" (down)
+
+3. joined_sentiment_market (id INT PRIMARY KEY AUTO_INCREMENT, date VARCHAR(20), sector VARCHAR(10), avg_sentiment DOUBLE, article_count INT, sentiment_std DOUBLE, open_price DOUBLE, close_price DOUBLE, daily_return_pct DOUBLE, market_direction VARCHAR(10), volume BIGINT)
+   - 10,080 rows — daily sentiment aggregated and joined with ETF prices on matching trading days
+
+4. prediction_accuracy (sector VARCHAR(10) PRIMARY KEY, accuracy DOUBLE, num_days INT)
+   - 12 rows — same-day binary prediction accuracy per sector
+
+5. sector_correlations (sector VARCHAR(10) PRIMARY KEY, correlation DOUBLE, mean_sentiment DOUBLE, mean_return DOUBLE, days INT)
+   - 12 rows — Pearson correlation between sentiment and return per sector
+
+6. source_accuracy (source_name VARCHAR(100) PRIMARY KEY, accuracy DOUBLE, num_days INT, mean_sentiment DOUBLE)
+   - 11 rows — prediction accuracy per news source
+
+7. cross_sector_correlations (sent_sector VARCHAR(10), mkt_sector VARCHAR(10), correlation DOUBLE, days INT)
+   - 132 rows — sentiment-to-return correlations across all sector pairs
+
+8. volatility_correlations (sector VARCHAR(10) PRIMARY KEY, correlation DOUBLE, mean_abs_return DOUBLE, days INT)
+   - 12 rows — sentiment vs. absolute return (volatility proxy) correlation per sector
+`;
+
+app.post("/api/ask", async (req, res) => {
+  try {
+    if (!llm) {
+      return res.status(503).json({ error: "AI Analyst is not available. Set GOOGLE_API_KEY to enable." });
+    }
+
+    const { question } = req.body;
+    if (!question) return res.status(400).json({ error: "question is required" });
+
+    const { PromptTemplate } = await import("@langchain/core/prompts");
+    const { StringOutputParser } = await import("@langchain/core/output_parsers");
+
+    const prompt = PromptTemplate.fromTemplate(`
+You are an expert SQL Generator for MySQL. Given the following MySQL schema:
+{schema}
+
+Write a strictly valid MySQL query that answers the user's question.
+IMPORTANT RULES:
+- Output ONLY the raw SQL query. Do NOT wrap it in markdown formatting.
+- Only generate SELECT queries. Never generate INSERT, UPDATE, DELETE, DROP, ALTER, or any other modifying statement.
+- Date format in all tables is "MM-DD-YYYY" stored as VARCHAR. To compare dates, use STR_TO_DATE(date, '%m-%d-%Y').
+- To extract year: YEAR(STR_TO_DATE(date, '%m-%d-%Y'))
+- If the question implies aggregating data, include both the grouping category AND the calculated numeric values in the SELECT clause.
+- For joining articles with ETF prices, join on articles.date = etf_prices.date AND articles.mapped_sector = etf_prices.ticker
+
+Question: {question}
+SQL Query:
+`);
+
+    const chain = prompt.pipe(llm).pipe(new StringOutputParser());
+
+    let sql = await chain.invoke({ schema: MYSQL_SCHEMA, question });
+
+    // Clean up markdown formatting
+    sql = sql.replace(/^```sql/i, "").replace(/```$/g, "").trim();
+    if (sql.startsWith("```")) sql = sql.replace(/^```/, "").replace(/```$/, "").trim();
+
+    if (!sql.toLowerCase().trim().startsWith("select")) {
+      return res.status(403).json({
+        error: "Generated query was not a SELECT statement for safety.",
+        generated_sql: sql,
+      });
+    }
+
+    res.json({ sql });
+  } catch (error) {
+    console.error("SQL Generation error:", error.message || error);
+    res.status(500).json({ error: "Failed to generate SQL", details: error.message || String(error) });
+  }
+});
+
+app.post("/api/execute_sql", async (req, res) => {
+  try {
+    if (!llm) {
+      return res.status(503).json({ error: "AI Analyst is not available." });
+    }
+
+    const { sql, question } = req.body;
+    if (!sql || !question) return res.status(400).json({ error: "sql and question are required" });
+
+    if (!sql.toLowerCase().trim().startsWith("select")) {
+      return res.status(403).json({ error: "Only SELECT queries are allowed" });
+    }
+
+    // Execute against MySQL
+    let rawResult;
+    try {
+      const [rows] = await pool.execute(sql);
+      rawResult = rows;
+    } catch (dbErr) {
+      return res.status(400).json({ error: "SQL Execution Error", details: dbErr.message });
+    }
+
+    // Use LLM to format the answer
+    const { PromptTemplate } = await import("@langchain/core/prompts");
+    const { StringOutputParser } = await import("@langchain/core/output_parsers");
+
+    const formatPrompt = PromptTemplate.fromTemplate(`
+Given the user's original question: "{question}"
+And the SQL query executed: "{sql}"
+And the JSON result from the database: "{result}"
+
+Provide a concise, natural language answer to the user's question based STRICTLY on the result. Do not mention the SQL query itself. Just answer the question directly. If the result is empty, say no results were found.
+
+OUTPUT FORMAT:
+Your final output MUST be a valid JSON object. Do NOT wrap it in markdown. Output raw JSON only.
+{{
+  "answer": "Concise natural language answer here...",
+  "chartConfig": {{
+     "type": "bar" | "line" | "pie" | "scatter" | "none",
+     "xAxisKey": "column name for x-axis label/category",
+     "yAxisKey": "column name for y-axis numeric value"
+  }}
+}}
+If the data is just a single number or cannot be charted logically, set "type" to "none".
+`);
+
+    const chain = formatPrompt.pipe(llm).pipe(new StringOutputParser());
+    let llmResponse = await chain.invoke({
+      question,
+      sql,
+      result: JSON.stringify(rawResult.slice(0, 50)), // Limit to 50 rows for LLM context
+    });
+
+    // Clean up
+    llmResponse = llmResponse.replace(/^```json/i, "").replace(/```$/g, "").trim();
+    if (llmResponse.startsWith("```")) llmResponse = llmResponse.replace(/^```/, "").replace(/```$/, "").trim();
+
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(llmResponse);
+    } catch {
+      parsedResponse = { answer: llmResponse, chartConfig: { type: "none" } };
+    }
+
+    res.json({
+      rawResult: rawResult.slice(0, 100), // Limit rows sent to frontend
+      formattedAnswer: parsedResponse.answer,
+      chartConfig: parsedResponse.chartConfig || { type: "none" },
+    });
+  } catch (error) {
+    console.error("Execution error:", error);
+    res.status(500).json({ error: "Error formatting answer", details: error.message || String(error) });
+  }
+});
+
 /* ════════════════════ START ════════════════════ */
 
 app.listen(PORT, async () => {
@@ -475,5 +727,6 @@ app.listen(PORT, async () => {
   } catch (err) {
     console.error(`  ⚠ Database connection failed: ${err.message}`);
   }
+  await initLLM();
   console.log(`  Try: http://localhost:${PORT}/api/analysis?newsSector=XLK&mktSector=XLK\n`);
 });
