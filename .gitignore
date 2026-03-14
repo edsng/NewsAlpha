@@ -25,3 +25,4 @@ dist-ssr
 
 # Large Files
 server/data/df_clean.csv
+server/.env

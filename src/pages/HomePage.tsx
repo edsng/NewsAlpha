@@ -25,21 +25,21 @@ interface Sector {
 }
 
 const SECTORS: Sector[] = [
-  { name: "Aerospace & Defense", ticker: "ITA",  color: "var(--red)",     description: "Geopolitical & defense-related news coverage",        icon: "▲", articles: 68489, accuracy: 48.7, correlation: 0.0292, tradingDays: 1178 },
-  { name: "Financials",         ticker: "XLF",  color: "var(--amber)",   description: "Banks, insurance, capital markets & lending",         icon: "◆", articles: 43727, accuracy: 53.2, correlation: 0.0399, tradingDays: 1542 },
-  { name: "Communication Svcs", ticker: "XLC",  color: "var(--cyan)",    description: "Media, telecom & interactive entertainment",          icon: "●", articles: 35215, accuracy: 51.4, correlation: -0.0219, tradingDays: 366 },
-  { name: "Leisure & Ent.",     ticker: "PEJ",  color: "var(--pink)",    description: "Restaurants, hotels, travel & entertainment",         icon: "✦", articles: 28289, accuracy: 51.6, correlation: 0.0199, tradingDays: 1145 },
-  { name: "Consumer Disc.",     ticker: "XLY",  color: "#06B6D4",        description: "Retail, autos, media & consumer services",            icon: "⬡", articles: 14471, accuracy: 53.9, correlation: 0.0071, tradingDays: 1014 },
-  { name: "Industrials",        ticker: "XLI",  color: "#8B5CF6",        description: "Aerospace, machinery & transportation equipment",     icon: "⬢", articles: 12739, accuracy: 49.6, correlation: 0.0118, tradingDays: 1063 },
-  { name: "Technology",         ticker: "XLK",  color: "var(--accent)",  description: "Software, hardware, semiconductors & IT services",    icon: "◎", articles: 8094,  accuracy: 53.7, correlation: 0.0377, tradingDays: 855 },
-  { name: "Energy",             ticker: "XLE",  color: "#F97316",        description: "Oil & gas exploration, refining & equipment",          icon: "◼", articles: 8007,  accuracy: 49.1, correlation: -0.0363, tradingDays: 918 },
-  { name: "Health Care",        ticker: "XLV",  color: "var(--green)",   description: "Pharma, biotech, medical devices & health providers", icon: "✚", articles: 6894,  accuracy: 52.6, correlation: -0.0358, tradingDays: 833 },
-  { name: "Consumer Staples",   ticker: "XLP",  color: "#14B8A6",        description: "Food, beverage, household & personal products",       icon: "◇", articles: 4084,  accuracy: 52.3, correlation: -0.0345, tradingDays: 708 },
-  { name: "Real Estate",        ticker: "XLRE", color: "var(--purple)",  description: "REITs, property management & development",            icon: "■", articles: 2120,  accuracy: 67.6, correlation: 0.1194, tradingDays: 37 },
-  { name: "Homebuilders",       ticker: "XHB",  color: "#EC4899",        description: "Residential construction & building products",        icon: "△", articles: 1480,  accuracy: 51.5, correlation: 0.0812, tradingDays: 421 },
+  { name: "Aerospace & Defense", ticker: "ITA",  color: "var(--red)",     description: "Geopolitical & defense-related news coverage",        icon: "▲", articles: 72793, accuracy: 49.3, correlation: 0.0170, tradingDays: 1181 },
+  { name: "Financials",         ticker: "XLF",  color: "var(--amber)",   description: "Banks, insurance, capital markets & lending",         icon: "◆", articles: 46381, accuracy: 52.6, correlation: 0.0322, tradingDays: 1542 },
+  { name: "Communication Svcs", ticker: "XLC",  color: "var(--cyan)",    description: "Media, telecom & interactive entertainment",          icon: "●", articles: 36703, accuracy: 52.0, correlation: 0.0729, tradingDays: 371 },
+  { name: "Leisure & Ent.",     ticker: "PEJ",  color: "var(--pink)",    description: "Restaurants, hotels, travel & entertainment",         icon: "✦", articles: 29927, accuracy: 52.0, correlation: 0.0287, tradingDays: 1246 },
+  { name: "Consumer Disc.",     ticker: "XLY",  color: "#06B6D4",        description: "Retail, autos, media & consumer services",            icon: "⬡", articles: 15998, accuracy: 53.9, correlation: -0.0275, tradingDays: 1085 },
+  { name: "Industrials",        ticker: "XLI",  color: "#8B5CF6",        description: "Aerospace, machinery & transportation equipment",     icon: "⬢", articles: 14176, accuracy: 48.7, correlation: -0.0012, tradingDays: 1076 },
+  { name: "Technology",         ticker: "XLK",  color: "var(--accent)",  description: "Software, hardware, semiconductors & IT services",    icon: "◎", articles: 9063,  accuracy: 52.0, correlation: -0.0171, tradingDays: 1014 },
+  { name: "Energy",             ticker: "XLE",  color: "#F97316",        description: "Oil & gas exploration, refining & equipment",          icon: "◼", articles: 8988,  accuracy: 52.1, correlation: -0.0017, tradingDays: 986 },
+  { name: "Health Care",        ticker: "XLV",  color: "var(--green)",   description: "Pharma, biotech, medical devices & health providers", icon: "✚", articles: 9186,  accuracy: 51.4, correlation: -0.0241, tradingDays: 984 },
+  { name: "Consumer Staples",   ticker: "XLP",  color: "#14B8A6",        description: "Food, beverage, household & personal products",       icon: "◇", articles: 4637,  accuracy: 52.1, correlation: -0.0188, tradingDays: 866 },
+  { name: "Real Estate",        ticker: "XLRE", color: "var(--purple)",  description: "REITs, property management & development",            icon: "■", articles: 2427,  accuracy: 63.2, correlation: 0.0516, tradingDays: 38 },
+  { name: "Homebuilders",       ticker: "XHB",  color: "#EC4899",        description: "Residential construction & building products",        icon: "△", articles: 1908,  accuracy: 51.3, correlation: 0.0793, tradingDays: 421 },
 ];
 
-const TOTAL_ARTICLES = 233609;
+const TOTAL_ARTICLES = 252187;
 
 /* ────────────────────────── helper: accuracy colour ────────────────────────── */
 function accuColor(acc: number) {
@@ -190,7 +190,7 @@ export default function HomePage() {
           <p className="hp-hero__subtitle">
             Analyzing the impact of news sentiment across 12 S&P 500 sector ETFs
             — using VADER-based NLP, Apache Spark distributed processing, and
-            correlation modeling on 233,609 articles.
+            correlation modeling on 252,187 articles.
           </p>
 
           <div className="hp-cta-row">
@@ -225,7 +225,7 @@ export default function HomePage() {
       {/* ── METHODOLOGY STRIP ── */}
       <section className="hp-methodology">
         {[
-          { label: "01", title: "Data Collection",     desc: "233,609 articles scraped from sources ranging from The Guardian and BBC News to niche outlets like GlobeNewswire and Intl Business Times." },
+          { label: "01", title: "Data Collection",     desc: "252,187 articles scraped from sources ranging from The Guardian and BBC News to niche outlets like GlobeNewswire and Intl Business Times." },
           { label: "02", title: "Sentiment Analysis",  desc: "VADER NLP scoring classifies each article's tone, producing per-article compound sentiment values from −1 to +1." },
           { label: "03", title: "Sector Mapping",      desc: "Article categories are mapped to 12 S&P 500 sector ETFs via keyword-based PySpark expressions." },
           { label: "04", title: "Impact Modeling",     desc: "Pearson correlations and binary prediction accuracy measure how sentiment shifts relate to sector price movements." },

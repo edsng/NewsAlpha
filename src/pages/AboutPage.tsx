@@ -30,7 +30,7 @@ const TEAM: Member[] = [
     color: "var(--amber)",
     role: "Execution & Validation",
     contributions:
-      "Ran the final Spark jobs that produced the reported metrics and outputs, validated reproducibility, and helped execute and troubleshoot the code including paths, configs, and runtime issues. Designed and developed the front-end web interface including the Home, Analysis, Paper, and About pages.",
+      "Ran the final Spark pipeline jobs that produced the reported metrics and validated reproducibility across the workflow. Assisted with execution, debugging, and troubleshooting of paths, configs, and runtime issues. Designed and developed the project's web interface, including the Home, Analysis, Paper, and About pages, and helped implement the earlier Express/Node backend before the project migrated to the university-cluster setup.",
     about: null,
   },
   {
@@ -39,7 +39,7 @@ const TEAM: Member[] = [
     color: "var(--green)",
     role: "Cross-Sector Analysis",
     contributions:
-      "Implemented the cross-sector sentiment-to-market prediction analysis in Spark, computed correlation and accuracy across all sector pairs, exported the results to SQLite, and visualized the relationships using a heatmap.",
+      "Implemented the cross-sector sentiment-to-market prediction analysis in Spark, computing sector-pair correlations and exporting the results to SQLite for visualization. Also helped migrate the backend analysis workflow from local SQLite to clustered MySQL and collaborated on prompt design for the LLM-driven SQL analytics pipeline so it could generate chart-ready outputs from natural language questions.",
     about: null,
   },
   {
@@ -48,7 +48,7 @@ const TEAM: Member[] = [
     color: "var(--pink)",
     role: "Data Integrity",
     contributions:
-      "Verified dataset integrity to ensure correct Spark CSV parsing, including comma and quotation handling.",
+      "Verified dataset integrity and helped identify the critical CSV parsing bug where Spark's default escape handling silently dropped thousands of rows. After the corrected dataset became available, updated analysis components and regenerated portions of the analysis tables so the final reported results reflected the corrected parsing pipeline.",
     about: null,
   },
   {
@@ -57,7 +57,7 @@ const TEAM: Member[] = [
     color: "var(--cyan)",
     role: "Data Processing",
     contributions:
-      "Initial article data processing and preparation for the Spark pipeline.",
+      "Led early article processing and cleaning, generated sentiment analysis with a Spark NLP pipeline, filled missing category data to expand usable coverage, and standardized dates to build a cohesive dataset. For the AI Analyst system, engineered the natural-language-to-SQL prompt flow, built an initial backend testing environment, added SQL safety guardrails, contributed to the dynamic charting workflow, and documented the prompt-engineering pitfalls discussed in the report.",
     about: null,
   },
   {
@@ -66,7 +66,7 @@ const TEAM: Member[] = [
     color: "var(--accent)",
     role: "Pipeline & Infrastructure",
     contributions:
-      "Spark pipeline development, ETF data collection, benchmarking, pipeline integration, and exporting results to SQLite.",
+      "Led core pipeline and infrastructure work across the project, including ETF data collection, PySpark ingestion on the university cluster, and the multi-stage joins used for same-sector, source-aware, and cross-sector analysis. Identified and fixed the critical CSV parsing bug, authored the rebuild pipeline used to regenerate the final tables, added revision-request visualizations, and architected the backend data pipeline connecting the frontend, LLM workflow, and MySQL database.",
     about: null,
   },
   {
@@ -75,7 +75,7 @@ const TEAM: Member[] = [
     color: "var(--purple)",
     role: "Volatility Analysis",
     contributions:
-      "Implemented an additional volatility analysis examining the relationship between average daily news sentiment and market volatility (measured as absolute daily return). Computed overall and per-sector Pearson correlations, identifying sector-specific asymmetries. Generated sector-level scatter plots with LOESS smoothing, sentiment quintile boxplots, and a correlation bar chart to visualize nonlinear and asymmetric effects. Exported all volatility analysis results into the project's SQLite database.",
+      "Implemented the project's additional volatility analysis and produced several of the major time-series evaluation components, including aggregate trends over time, best-sector analysis, best-vs-worst sector comparisons, and lag-effect analysis. Generated the associated plots, exported the analysis outputs into the project database, and contributed several of the report's key figures and supporting analysis.",
     about: null,
   },
 ];
