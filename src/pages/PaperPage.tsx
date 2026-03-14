@@ -13,26 +13,30 @@ import "./PaperPage.css";
 /* ════════════════════ DATA FROM REPORT ════════════════════ */
 
 const SECTOR_ACCURACY = [
-  { ticker: "XLRE", accuracy: 67.6, days: 37,   note: "* small sample" },
-  { ticker: "XLY",  accuracy: 53.9, days: 1014, note: "" },
-  { ticker: "XLK",  accuracy: 53.7, days: 855,  note: "" },
-  { ticker: "XLF",  accuracy: 53.2, days: 1542, note: "" },
-  { ticker: "XLV",  accuracy: 52.6, days: 833,  note: "" },
-  { ticker: "XLP",  accuracy: 52.3, days: 708,  note: "" },
-  { ticker: "PEJ",  accuracy: 51.6, days: 1145, note: "" },
-  { ticker: "XHB",  accuracy: 51.5, days: 421,  note: "" },
-  { ticker: "XLC",  accuracy: 51.4, days: 366,  note: "" },
-  { ticker: "XLI",  accuracy: 49.6, days: 1063, note: "" },
-  { ticker: "XLE",  accuracy: 49.1, days: 918,  note: "" },
-  { ticker: "ITA",  accuracy: 48.7, days: 1178, note: "" },
+  { ticker: "XLRE", accuracy: 63.2, days: 38,   note: "* small sample" },
+  { ticker: "XLY",  accuracy: 53.9, days: 1085, note: "" },
+  { ticker: "XLF",  accuracy: 52.6, days: 1542, note: "" },
+  { ticker: "XLE",  accuracy: 52.1, days: 986,  note: "" },
+  { ticker: "XLP",  accuracy: 52.1, days: 866,  note: "" },
+  { ticker: "XLC",  accuracy: 52.0, days: 371,  note: "" },
+  { ticker: "PEJ",  accuracy: 52.0, days: 1246, note: "" },
+  { ticker: "XLK",  accuracy: 52.0, days: 1014, note: "" },
+  { ticker: "XLV",  accuracy: 51.4, days: 984,  note: "" },
+  { ticker: "XHB",  accuracy: 51.3, days: 421,  note: "" },
+  { ticker: "ITA",  accuracy: 49.3, days: 1181, note: "" },
+  { ticker: "XLI",  accuracy: 48.7, days: 1076, note: "" },
 ];
 
 const SOURCE_ACCURACY = [
   { source: "GlobeNewswire",       accuracy: 66.4, days: 116,  sentiment: 0.929, note: "* positivity bias" },
+  { source: "Android Central",     accuracy: 64.7, days: 34,   sentiment: 0.876, note: "* small sample" },
+  { source: "CNA",                 accuracy: 63.6, days: 22,   sentiment: 0.338, note: "* small sample" },
+  { source: "Forbes",              accuracy: 63.2, days: 38,   sentiment: 0.813, note: "* small sample" },
+  { source: "Phys.Org",            accuracy: 60.7, days: 56,   sentiment: 0.626, note: "" },
   { source: "Intl Business Times", accuracy: 57.1, days: 126,  sentiment: 0.134, note: "" },
   { source: "Times of India",      accuracy: 54.8, days: 115,  sentiment: 0.340, note: "" },
-  { source: "CNN-DailyMail",       accuracy: 53.2, days: 3947, sentiment: 0.150, note: "" },
-  { source: "The Guardian",        accuracy: 51.6, days: 8066, sentiment: 0.233, note: "" },
+  { source: "CNN-DailyMail",       accuracy: 52.2, days: 4116, sentiment: 0.179, note: "" },
+  { source: "The Guardian",        accuracy: 51.7, days: 8640, sentiment: 0.275, note: "" },
   { source: "Boing Boing",         accuracy: 51.2, days: 84,   sentiment: 0.218, note: "" },
   { source: "NPR",                 accuracy: 48.4, days: 91,   sentiment: 0.091, note: "" },
   { source: "BBC News",            accuracy: 47.9, days: 194,  sentiment: -0.260, note: "" },
@@ -42,13 +46,18 @@ const SOURCE_ACCURACY = [
 ];
 
 const NEXT_DAY = [
-  { sector: "XLRE", sameDay: 67.6, nextDay: 58.3, change: -9.3 },
-  { sector: "XLY",  sameDay: 53.9, nextDay: 55.1, change: +1.2 },
-  { sector: "XLV",  sameDay: 52.6, nextDay: 53.6, change: +1.0 },
-  { sector: "XLK",  sameDay: 53.7, nextDay: 51.8, change: -1.9 },
-  { sector: "XLF",  sameDay: 53.2, nextDay: 51.3, change: -1.9 },
-  { sector: "PEJ",  sameDay: 51.6, nextDay: 52.3, change: +0.7 },
-  { sector: "ITA",  sameDay: 48.7, nextDay: 49.5, change: +0.8 },
+  { sector: "XLY",  sameDay: 53.9, nextDay: 54.8, change: +0.9 },
+  { sector: "XLRE", sameDay: 63.2, nextDay: 54.1, change: -9.1 },
+  { sector: "XLV",  sameDay: 51.4, nextDay: 53.7, change: +2.3 },
+  { sector: "XLK",  sameDay: 52.0, nextDay: 52.1, change: +0.1 },
+  { sector: "PEJ",  sameDay: 52.0, nextDay: 52.0, change: 0.0 },
+  { sector: "XLC",  sameDay: 52.0, nextDay: 51.4, change: -0.6 },
+  { sector: "XLP",  sameDay: 52.1, nextDay: 51.3, change: -0.8 },
+  { sector: "XLF",  sameDay: 52.6, nextDay: 50.5, change: -2.1 },
+  { sector: "XLE",  sameDay: 52.1, nextDay: 50.1, change: -2.0 },
+  { sector: "ITA",  sameDay: 49.3, nextDay: 50.0, change: +0.7 },
+  { sector: "XLI",  sameDay: 48.7, nextDay: 49.6, change: +0.9 },
+  { sector: "XHB",  sameDay: 51.3, nextDay: 49.3, change: -2.0 },
 ];
 
 /* ════════════════════ HORIZONTAL BAR COMPONENT ════════════════════ */
@@ -122,11 +131,11 @@ export default function PaperPage() {
       {/* ── KEY STATS ── */}
       <div className="pp-stats-strip">
         {[
-          { value: "233,609", label: "Articles Analyzed" },
+          { value: "252,187", label: "Articles Analyzed" },
           { value: "12", label: "Sector ETFs" },
-          { value: "10,080", label: "Matched Trading Days" },
-          { value: "51.7%", label: "Overall Accuracy" },
-          { value: "0.014", label: "Avg Correlation" },
+          { value: "10,810", label: "Matched Trading Days" },
+          { value: "51.6%", label: "Overall Accuracy" },
+          { value: "0.011", label: "Avg Correlation" },
         ].map((s) => (
           <div key={s.label} className="pp-stat-pill">
             <div className="pp-stat-pill__value">{s.value}</div>
@@ -142,7 +151,7 @@ export default function PaperPage() {
           <span className="pp-section__number">01</span>
           <h2 className="pp-section__h2">Abstract</h2>
           <p className="pp-p">
-            This study investigates whether news sentiment, measured by VADER compound scores across 233,609 articles from 11 sources, can predict the daily market direction of 12 S&P 500 sector ETFs. Using Apache Spark for distributed processing, we computed same-day and next-day prediction accuracy, Pearson correlations between sentiment and returns, cross-sector effects, source-level reliability, and sentiment-volatility relationships. The overall same-day prediction accuracy of <strong>51.7%</strong> modestly exceeds the 50% random baseline, with certain sectors and sources achieving meaningfully higher accuracy.
+            This study investigates whether news sentiment, measured by VADER compound scores across 252,187 articles from 16 sources, can predict the daily market direction of 12 S&P 500 sector ETFs. Using Apache Spark for distributed processing, we computed same-day and next-day prediction accuracy, Pearson correlations between sentiment and returns, cross-sector effects, source-level reliability, and sentiment-volatility relationships. The overall same-day prediction accuracy of <strong>51.6%</strong> modestly exceeds the 50% random baseline, with certain sectors and sources achieving meaningfully higher accuracy.
           </p>
         </section>
 
@@ -185,7 +194,7 @@ export default function PaperPage() {
           <span className="pp-section__number">03</span>
           <h2 className="pp-section__h2">Next-Day Prediction (Lagged Analysis)</h2>
           <p className="pp-p">
-            To test whether news sentiment can predict the <em>following</em> trading day's direction, a lagged analysis was performed using Spark window functions. Overall next-day accuracy was <strong>51.1%</strong> vs. 51.7% same-day. Most sectors showed slightly lower next-day accuracy, which is expected — news and markets tend to react to the same events simultaneously.
+            To test whether news sentiment can predict the <em>following</em> trading day's direction, a lagged analysis was performed using Spark window functions. Overall next-day accuracy was <strong>51.4%</strong> vs. 51.6% same-day. Most sectors showed slightly lower next-day accuracy, which is expected — news and markets tend to react to the same events simultaneously.
           </p>
           <p className="pp-p">
             However, <strong>XLY (Consumer Discretionary) improved from 53.9% to 55.1%</strong> next-day, and <strong>XLV (Health Care) improved from 52.6% to 53.6%</strong>. This suggests that consumer and health sector news may have a delayed market effect, representing a potentially actionable signal.
@@ -301,7 +310,7 @@ export default function PaperPage() {
 
           <h3 className="pp-section__h3">1. Sentiment carries a measurable but weak signal</h3>
           <p className="pp-p">
-            Overall same-day correlation of 0.014 and prediction accuracy of 51.7% exceed random chance but fall far short of a reliable trading signal. This is consistent with the efficient market hypothesis.
+            Overall same-day correlation of 0.011 and prediction accuracy of 51.6% exceed random chance but fall far short of a reliable trading signal. This is consistent with the efficient market hypothesis.
           </p>
 
           <h3 className="pp-section__h3">2. Some sectors are more predictable</h3>
@@ -335,7 +344,7 @@ export default function PaperPage() {
           <span className="pp-section__number">08</span>
           <h2 className="pp-section__h2">Methodology</h2>
           <p className="pp-p">
-            Articles from four source datasets (Global News, News Articles, Guardian News, CNN-DailyMail) were cleaned, deduplicated, and scored using VADER sentiment analysis. Each article's category was mapped to one of 12 S&P 500 sector ETFs via keyword-based PySpark expressions. Articles were aggregated by date and sector, then joined with historical ETF price data from Yahoo Finance (2012–2024). The inner join produced 10,080 matched records representing trading days with corresponding news coverage.
+            Articles from four source datasets (Global News, News Articles, Guardian News, CNN-DailyMail) were cleaned, deduplicated, and scored using VADER sentiment analysis. Each article's category was mapped to one of 12 S&P 500 sector ETFs via keyword-based PySpark expressions. Articles were aggregated by date and sector, then joined with historical ETF price data from Yahoo Finance (2012–2024). The inner join produced 10,810 matched records representing trading days with corresponding news coverage.
           </p>
           <p className="pp-p">
             Analysis included Pearson correlation, binary directional prediction, cross-sector correlation matrices, lagged next-day prediction via window functions, source-level accuracy decomposition, and volatility analysis with LOESS smoothing and sentiment quintile breakdowns. All results were stored in SQLite for the web interface backend.

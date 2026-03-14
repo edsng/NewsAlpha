@@ -111,6 +111,8 @@ export default function AIAnalystPage() {
     }
   };
 
+  const COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4", "#14b8a6"];
+
   const renderChart = () => {
     if (!chartConfig || chartConfig.type === "none" || !rawResult || rawResult.length === 0) return null;
 
@@ -122,19 +124,26 @@ export default function AIAnalystPage() {
       [yAxisKey || "value"]: Number(row[yAxisKey || "value"]) || row[yAxisKey || "value"],
     }));
 
-    const COLORS = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4", "#14b8a6"];
+    const tooltipStyle = {
+      backgroundColor: "#12161c",
+      borderColor: "#1e2530",
+      color: "#e8ecf1",
+      fontFamily: "'DM Sans', sans-serif",
+      fontSize: 13,
+      borderRadius: 8,
+    };
 
     return (
-      <div className="ap-chart-container ap-fade-in">
+      <div className="ai-chart">
         <ResponsiveContainer width="100%" height={400}>
           {type === "bar" ? (
             <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey={xAxisKey} stroke="var(--text-muted)" tick={{ fontSize: 12 }} />
-              <YAxis stroke="var(--text-muted)" tick={{ fontSize: 12 }} />
-              <Tooltip contentStyle={{ backgroundColor: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
-              <Legend />
-              <Bar dataKey={yAxisKey!} fill="var(--accent)">
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e2530" />
+              <XAxis dataKey={xAxisKey} stroke="#7a8599" tick={{ fontSize: 12, fontFamily: "'DM Sans', sans-serif" }} />
+              <YAxis stroke="#7a8599" tick={{ fontSize: 12, fontFamily: "'DM Sans', sans-serif" }} />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Legend wrapperStyle={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13 }} />
+              <Bar dataKey={yAxisKey!} fill="#3b82f6">
                 {data.map((_, i) => (
                   <Cell key={i} fill={COLORS[i % COLORS.length]} />
                 ))}
@@ -142,27 +151,27 @@ export default function AIAnalystPage() {
             </BarChart>
           ) : type === "line" ? (
             <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey={xAxisKey} stroke="var(--text-muted)" tick={{ fontSize: 12 }} />
-              <YAxis stroke="var(--text-muted)" tick={{ fontSize: 12 }} />
-              <Tooltip contentStyle={{ backgroundColor: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
-              <Legend />
-              <Line type="monotone" dataKey={yAxisKey!} stroke="var(--green)" strokeWidth={2} activeDot={{ r: 8 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e2530" />
+              <XAxis dataKey={xAxisKey} stroke="#7a8599" tick={{ fontSize: 12, fontFamily: "'DM Sans', sans-serif" }} />
+              <YAxis stroke="#7a8599" tick={{ fontSize: 12, fontFamily: "'DM Sans', sans-serif" }} />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Legend wrapperStyle={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13 }} />
+              <Line type="monotone" dataKey={yAxisKey!} stroke="#22c55e" strokeWidth={2} activeDot={{ r: 8 }} />
             </LineChart>
           ) : type === "scatter" ? (
             <ScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey={xAxisKey} name={xAxisKey} stroke="var(--text-muted)" tick={{ fontSize: 12 }} />
-              <YAxis dataKey={yAxisKey} name={yAxisKey} stroke="var(--text-muted)" tick={{ fontSize: 12 }} />
-              <Tooltip contentStyle={{ backgroundColor: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
-              <Legend />
-              <Scatter name="Data" data={data} fill="var(--amber)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e2530" />
+              <XAxis dataKey={xAxisKey} name={xAxisKey} stroke="#7a8599" tick={{ fontSize: 12, fontFamily: "'DM Sans', sans-serif" }} />
+              <YAxis dataKey={yAxisKey} name={yAxisKey} stroke="#7a8599" tick={{ fontSize: 12, fontFamily: "'DM Sans', sans-serif" }} />
+              <Tooltip contentStyle={tooltipStyle} />
+              <Legend wrapperStyle={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13 }} />
+              <Scatter name="Data" data={data} fill="#f59e0b" />
             </ScatterChart>
           ) : type === "pie" && xAxisKey && yAxisKey ? (
             <PieChart>
-              <Tooltip contentStyle={{ backgroundColor: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }} />
-              <Legend />
-              <Pie data={data} dataKey={yAxisKey} nameKey={xAxisKey} cx="50%" cy="50%" outerRadius={120} fill="var(--purple)" label>
+              <Tooltip contentStyle={tooltipStyle} />
+              <Legend wrapperStyle={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13 }} />
+              <Pie data={data} dataKey={yAxisKey} nameKey={xAxisKey} cx="50%" cy="50%" outerRadius={120} fill="#a855f7" label={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12 }}>
                 {data.map((_, i) => (
                   <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
                 ))}
@@ -177,34 +186,36 @@ export default function AIAnalystPage() {
   };
 
   return (
-    <div className="ap-root">
+    <div className="ai-root">
       {/* ── NAV ── */}
-      <nav className="ap-nav">
-        <span className="ap-nav__title">NewsAlpha</span>
-        <div className="ap-nav__links">
-          <Link to="/" className="ap-nav-link">Home</Link>
-          <Link to="/analysis" className="ap-nav-link">Analysis</Link>
-          <Link to="/paper" className="ap-nav-link">Paper</Link>
-          <Link to="/ai-analyst" className="ap-nav-link ap-nav-link--active">AI Analyst</Link>
-          <Link to="/about" className="ap-nav-link">About</Link>
+      <nav className="ai-nav">
+        <span className="ai-nav__title">NewsAlpha</span>
+        <div className="ai-nav__links">
+          <Link to="/" className="ai-nav-link">Home</Link>
+          <Link to="/analysis" className="ai-nav-link">Analysis</Link>
+          <Link to="/paper" className="ai-nav-link">Paper</Link>
+          <Link to="/ai-analyst" className="ai-nav-link ai-nav-link--active">AI Analyst</Link>
+          <Link to="/about" className="ai-nav-link">About</Link>
         </div>
       </nav>
 
       {/* ── PAGE HEADER ── */}
-      <div className="ap-header ap-fade-in ap-fade-in--d1">
-        <p className="ap-header__label">Natural Language to SQL</p>
-        <h1 className="ap-header__h1">AI Analyst</h1>
-        <p className="ap-header__subtitle">
+      <div className="ai-header">
+        <p className="ai-header__label">Natural Language to SQL</p>
+        <h1 className="ai-header__h1">AI Analyst</h1>
+        <p className="ai-header__subtitle">
           Ask questions about the dataset in plain English. The AI generates a safe SELECT query,
           you verify it, then it runs against the live MySQL database.
         </p>
       </div>
 
-      <div className="ap-content ap-analyst-container ap-fade-in ap-fade-in--d2">
-        <div className="ap-analyst-form">
+      {/* ── MAIN CONTENT ── */}
+      <div className="ai-container">
+        {/* Question form */}
+        <div className="ai-form">
           <textarea
             autoFocus
-            className="ap-analyst-textarea"
+            className="ai-textarea"
             placeholder="e.g. Which news source has the highest prediction accuracy?"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
@@ -216,55 +227,58 @@ export default function AIAnalystPage() {
             }}
           />
           <button
-            className="ap-analyst-button"
+            className="ai-btn"
             onClick={handleGenerateSql}
             disabled={loadingSql || !question.trim()}
           >
             {loadingSql ? "Generating SQL..." : "Generate SQL"}
           </button>
 
-          {sqlError && <div style={{ color: "var(--red)", marginTop: "1rem" }}>{sqlError}</div>}
+          {sqlError && <div className="ai-error">{sqlError}</div>}
         </div>
 
+        {/* SQL verification */}
         {sqlQuery && (
-          <div className="ap-sql-verification ap-fade-in">
+          <div className="ai-sql-box">
             <h3>Generated SQL for Verification</h3>
-            <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", marginBottom: "1rem" }}>
+            <p className="ai-sql-box__hint">
               Review the query below before executing. Only SELECT statements are permitted.
             </p>
             <pre>{sqlQuery}</pre>
-            <div style={{ marginTop: "1rem" }}>
+            <div className="ai-sql-box__actions">
               <button
-                className="ap-analyst-button"
+                className="ai-btn ai-btn--green"
                 onClick={handleExecuteSql}
                 disabled={executing}
-                style={{ background: "var(--green)" }}
               >
                 {executing ? "Executing..." : "Run Query"}
               </button>
             </div>
-            {execError && <div style={{ color: "var(--red)", marginTop: "1rem" }}>{execError}</div>}
+            {execError && <div className="ai-error">{execError}</div>}
           </div>
         )}
 
+        {/* Answer */}
         {formattedAnswer && (
-          <div className="ap-answer-box ap-fade-in">
+          <div className="ai-answer">
             <h3>Answer</h3>
             <p>{formattedAnswer}</p>
           </div>
         )}
 
+        {/* Chart */}
         {renderChart()}
 
+        {/* Raw data */}
         {rawResult && (
-          <div className="ap-fade-in">
-            <button className="ap-raw-data-toggle" onClick={() => setShowRaw(!showRaw)}>
+          <div>
+            <button className="ai-raw-toggle" onClick={() => setShowRaw(!showRaw)}>
               {showRaw ? "Hide Raw Data" : "Show Raw Data"}
             </button>
 
             {showRaw && rawResult.length > 0 && (
-              <div style={{ overflowX: "auto" }}>
-                <table className="ap-raw-data-table">
+              <div className="ai-table-wrap">
+                <table className="ai-table">
                   <thead>
                     <tr>
                       {Object.keys(rawResult[0]).map((k) => (
@@ -285,19 +299,20 @@ export default function AIAnalystPage() {
               </div>
             )}
 
-            {showRaw && rawResult.length === 0 && <p>No results found for this query.</p>}
+            {showRaw && rawResult.length === 0 && (
+              <p className="ai-no-results">No results found for this query.</p>
+            )}
           </div>
         )}
 
-        <div className="ap-sample-queries">
-          <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginBottom: "0.5rem" }}>
-            Try a sample query:
-          </p>
-          <div>
+        {/* Sample queries */}
+        <div className="ai-samples">
+          <p className="ai-samples__label">Try a sample query:</p>
+          <div className="ai-samples__grid">
             {sampleQueries.map((q, i) => (
               <button
                 key={i}
-                className="ap-sample-query-btn"
+                className="ai-sample-btn"
                 onClick={() => setQuestion(q)}
               >
                 {q}
