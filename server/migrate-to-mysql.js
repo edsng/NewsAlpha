@@ -163,7 +163,6 @@ async function migrate() {
     CREATE TABLE IF NOT EXISTS volatility_correlations (
       sector VARCHAR(10) PRIMARY KEY,
       correlation DOUBLE,
-      mean_abs_return DOUBLE,
       days INT
     )
   `);
@@ -273,9 +272,9 @@ async function migrate() {
     {
       from: "volatility_correlations",
       to: "volatility_correlations",
-      cols: "sector, correlation, mean_abs_return, days",
-      insert: "sector, correlation, mean_abs_return, days",
-      placeholders: 4,
+      cols: "sector, correlation, days",
+      insert: "sector, correlation, days",
+      placeholders: 3,
     },
   ];
 
